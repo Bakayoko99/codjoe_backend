@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const config = require('./config');
 
-const port = config.PORT;
+const port = config.PORT || 8085;
 const app = express();
 
 const stripe = require("stripe")(config.stripe_st_key)
