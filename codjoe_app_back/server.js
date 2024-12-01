@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const config = require('./config');
 
+const atlasUrl = config.MONGODB_ATLAS_URI
 const port = config.PORT || 8085;
 const app = express();
 
@@ -23,7 +24,7 @@ try {
 
     setTimeout(() => {
 
-        mongoose.connect(config.MONGODB_URI)
+        mongoose.connect(atlasUrl)
             .then(() => {
                 console.log('Connected to MongoDB');
             });
