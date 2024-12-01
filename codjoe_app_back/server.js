@@ -20,10 +20,15 @@ const authRoute = require('./routes/authRoute')
 
 try {
 
-    mongoose.connect(config.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-        .then(() => {
-            console.log('Connected to MongoDB');
-        });
+
+    setTimeout(() => {
+
+        mongoose.connect(config.MONGODB_URI)
+            .then(() => {
+                console.log('Connected to MongoDB');
+            });
+
+    }, 60000)
 
 } catch (error) {
 
