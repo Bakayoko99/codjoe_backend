@@ -1,5 +1,6 @@
 
 const config = {
+    MONGODB_ATLAS_URI: process.env.MONGODB_ATLAS_URI,
     MONGODB_URI: process.env.MONGODB_URI,
     PORT: process.env.PORT,
     key: process.env.KEY,
