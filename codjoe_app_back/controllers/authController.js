@@ -2,6 +2,7 @@
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 
 const userModel = require('../models/userModel');
 
@@ -83,7 +84,7 @@ const logIn = async (req, res) => {
             }
         };
 
-        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+        jwt.sign(payload, config.key, { expiresIn: 3600 }, (err, token) => {
             if (err) throw err;
             res.json({ token });
         });

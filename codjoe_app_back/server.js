@@ -5,7 +5,8 @@ const dotenv = require('dotenv');
 dotenv.config();
 const config = require('./config');
 
-const atlasUrl = config.MONGODB_ATLAS_URI
+const atlasUrl = config.MONGODB_ATLAS_URI;
+const localUrl = config.MONGODB_LOCAL_URI;
 const port = config.PORT || 8085;
 const app = express();
 
@@ -17,35 +18,55 @@ app.use(cors());
 const categoryRoute = require('./routes/categoryRoute');
 const productRoute = require('./routes/productRoute');
 const userRoute = require('./routes/userRoute');
-const authRoute = require('./routes/authRoute')
+const authRoute = require('./routes/authRoute');
+const orderRoute = require('./routes/orderRoute');
 
-try {
-
-
-    setTimeout(() => {
-
-        mongoose.connect(atlasUrl)
-            .then(() => {
-                console.log('Connected to MongoDB');
+const connectToDatabase = async () => {
+    try {
+        console.log('🔄 Attempting to connect to MongoDB Atlas...');
+        
+        await mongoose.connect(atlasUrl, {
+            serverSelectionTimeoutMS: 5000, // Timeout après 5 secondes
+            socketTimeoutMS: 45000,
+        });
+        
+        console.log('✅ Connected to MongoDB Atlas');
+        console.log('📊 Database name:', mongoose.connection.name);
+        
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        console.log('📁 Collections:', collections.map(c => c.name));
+        
+    } catch (atlasError) {
+        console.error('❌ MongoDB Atlas connection failed:', atlasError.message);
+        console.log('🔄 Attempting to connect to local MongoDB...');
+        
+        try {
+            await mongoose.connect(localUrl, {
+                serverSelectionTimeoutMS: 5000,
             });
+            
+            console.log('✅ Connected to MongoDB Local');
+            console.log('📊 Database name:', mongoose.connection.name);
+            
+        } catch (localError) {
+            console.error('❌ MongoDB Local connection failed:', localError.message);
+            console.log('⚠️  Running without database connection');
+            console.log('💡 Please ensure MongoDB is installed and running, or check your Atlas connection');
+        }
+    }
+};
 
-    }, 60000)
-
-} catch (error) {
-
-    console.log('Error connecting to MongoDB:', error.message);
-
-}
+connectToDatabase();
 
 app.get('/api/codjoe', (req, res) => {
     res.json('Hello World from CodJoe App server !');
 });
 
-// app.get('/api/config', (req, res) => {
-//     res.send({
-//         stripePublicKey: config.stripe_pc_key
-//     })
-// })
+app.get('/api/config', (req, res) => {
+    res.send({
+        stripePublicKey: config.stripe_pc_key
+    })
+})
 
 app.post('/api/pay', async (req, res) => {
 
@@ -71,6 +92,7 @@ app.use('/api/auth', authRoute);
 app.use('/api/categories', categoryRoute);
 app.use('/api/products', productRoute);
 app.use('/api/users', userRoute);
+app.use('/api', orderRoute);
 
 
 app.listen(port, () => {

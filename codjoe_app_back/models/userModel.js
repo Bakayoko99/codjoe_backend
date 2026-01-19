@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
     birthday: { type: Date, required: true},
     role: { type: String, default: 'user' },
     shoppingCart: { type: [shoppingCartSchema], required: false },
+    orders: [{ type: mongoose.Types.ObjectId, ref: 'Order' }],
     createdAt: { type: Date, default: Date.now }
 });
 
