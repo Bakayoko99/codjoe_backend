@@ -1,11 +1,22 @@
+/**
+ * @module authController
+ * @description Contrôleur d'authentification (inscription, connexion, vérification email).
+ */
 
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const config = require('../config');
 
 const userModel = require('../models/userModel');
 
+/**
+ * Inscription d'un nouvel utilisateur.
+ * Génère un token de vérification email (double opt-in RGPD) et retourne un JWT.
+ * @param {Object} req - Corps : firstName, lastName, email, password, country, birthday
+ * @param {Object} res - 200 {token, emailVerificationToken} | 400 | 500
+ */
 const signUp = async (req, res) => {
 
     const errors = validationResult(req);
@@ -30,6 +41,8 @@ const signUp = async (req, res) => {
             password,
             country,
             birthday,
+            emailVerificationToken: crypto.randomBytes(32).toString('hex'),
+            consentDate: new Date(),
         });
 
         const salt = await bcrypt.genSalt(10);
@@ -45,15 +58,20 @@ const signUp = async (req, res) => {
 
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
             if (err) throw err;
-            res.json({ token });
+            res.json({ token, emailVerificationToken: user.emailVerificationToken });
         });
 
     } catch (error) {
         console.error(error.message);
         res.status(500).send('Server signup error');
     }
-}
+};
 
+/**
+ * Connexion d'un utilisateur existant.
+ * @param {Object} req - Corps : email, password
+ * @param {Object} res - 200 {token} | 400 | 500
+ */
 const logIn = async (req, res) => {
 
     const errors = validationResult(req);
@@ -65,7 +83,7 @@ const logIn = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        let user = await userModel.findOne({ email });
+        const user = await userModel.findOne({ email });
 
         if (!user) {
             return res.status(400).json({ msg: 'Invalid credentials' });
@@ -93,6 +111,27 @@ const logIn = async (req, res) => {
         console.error(error.message);
         res.status(500).send('Server login error');
     }
-}
+};
 
-module.exports = { signUp, logIn };
+/**
+ * RGPD — Double opt-in : confirme l'adresse email via le token envoyé à l'inscription.
+ * @param {Object} req - Paramètre :token dans l'URL
+ * @param {Object} res - 200 | 400 | 500
+ */
+const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const user = await userModel.findOne({ emailVerificationToken: token });
+        if (!user) {
+            return res.status(400).json({ message: 'Token invalide ou expiré' });
+        }
+        user.emailVerified = true;
+        user.emailVerificationToken = null;
+        await user.save();
+        res.status(200).json({ message: 'Email vérifié avec succès' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { signUp, logIn, verifyEmail };

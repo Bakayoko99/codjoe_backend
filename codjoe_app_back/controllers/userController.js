@@ -4,59 +4,59 @@ const userModel = require('../models/userModel');
 const getUserCartItems = async (req, res) => {
 
     try {
-        const userID = req.params.userID
-        const user = await userModel.findById(userID)
+        const userID = req.params.userID;
+        const user = await userModel.findById(userID);
 
 
-        const userItems = []
+        const userItems = [];
 
         if (!user) {
-            return res.status(400).send('user not found')
+            return res.status(400).send('user not found');
         }
         if (user.shoppingCart.length > 0) {
             user.shoppingCart.forEach(item => {
-                userItems.push(item)
+                userItems.push(item);
             });
 
             res.status(200).json({
                 data: userItems
-            })
+            });
 
         } else {
 
-            res.send('shopping cart empty')
+            res.send('shopping cart empty');
         }
 
     } catch (error) {
-        res.json({ message: error.message })
+        res.json({ message: error.message });
     }
 
-}
+};
 
 const addNewCartItems = async (req, res) => {
 
     try {
 
-        const userID = req.params.userID
-        const userCart = await userModel.findById(userID).select({ shoppingCart: 1 }).lean()
-        const items = req.body?.newItems
+        const userID = req.params.userID;
+        const userCart = await userModel.findById(userID).select({ shoppingCart: 1 }).lean();
+        const items = req.body?.newItems;
 
-        const newItems = []
+        const newItems = [];
 
         items.forEach(item => {
             newItems.push({
                 productId: item.id,
                 size: item.size,
                 quantity: item.quantity
-            })
+            });
         });
 
         if (!userCart) {
-            return res.status(400).send('user not found')
+            return res.status(400).send('user not found');
         }
 
         if (newItems.length < 1) {
-            return res.status(400).send('new items not found')
+            return res.status(400).send('new items not found');
         }
 
         if (userCart.shoppingCart.length < 1) {
@@ -65,29 +65,29 @@ const addNewCartItems = async (req, res) => {
                 userID, 
                 { shoppingCart: newItems },
                 { returnOriginal: false, returnDocument: "after" }
-            )
+            );
 
-            return res.status(200).json({ message: 'cart updated', updatedCart: updatedCart.shoppingCart })
+            return res.status(200).json({ message: 'cart updated', updatedCart: updatedCart.shoppingCart });
 
         } else {
 
-            let itemExistIndex = -1
+            let itemExistIndex = -1;
 
             for (let i = 0; i < newItems.length; i++) {
                 const existingItemIndex = userCart.shoppingCart.findIndex((item) => {
-                    return newItems[i].productId === String(item.productId) && newItems[i].size === item.size
-                })
+                    return newItems[i].productId === String(item.productId) && newItems[i].size === item.size;
+                });
 
                 if (existingItemIndex !== -1) {
-                    itemExistIndex = existingItemIndex
-                    const user = await userModel.findById(userID)
-                    user.shoppingCart[existingItemIndex].quantity += newItems[i].quantity
-                    await user.save()
+                    itemExistIndex = existingItemIndex;
+                    const user = await userModel.findById(userID);
+                    user.shoppingCart[existingItemIndex].quantity += newItems[i].quantity;
+                    await user.save();
                     
                     return res.status(200).json({ 
                         message: 'quantity updated', 
                         updatedCart: user.shoppingCart 
-                    })
+                    });
                 }
             }
 
@@ -95,142 +95,177 @@ const addNewCartItems = async (req, res) => {
                 userID, 
                 { $push: { shoppingCart: newItems } }, 
                 { returnOriginal: false, returnDocument: "after" }
-            )
+            );
 
-            res.status(200).json({ message: 'cart updated', updatedCart: updatedCart.shoppingCart })
+            res.status(200).json({ message: 'cart updated', updatedCart: updatedCart.shoppingCart });
         }
 
     } catch (error) {
-        res.json({ message: error.message })
+        res.json({ message: error.message });
     }
 
-}
+};
 
 
 const removeCartItems = async (req, res) => {
 
     try {
-        const userID = req.params.userID
-        const { productId, size } = req.body
+        const userID = req.params.userID;
+        const { productId, size } = req.body;
 
         if (!productId) {
-            return res.status(400).json({ message: 'productId is required' })
+            return res.status(400).json({ message: 'productId is required' });
         }
 
-        const user = await userModel.findById(userID)
+        const user = await userModel.findById(userID);
 
         if (!user) {
-            return res.status(404).json({ message: 'user not found' })
+            return res.status(404).json({ message: 'user not found' });
         }
 
         const updatedCart = user.shoppingCart.filter(item => {
             if (size) {
-                return !(String(item.productId) === productId && item.size === size)
+                return !(String(item.productId) === productId && item.size === size);
             }
-            return String(item.productId) !== productId
-        })
+            return String(item.productId) !== productId;
+        });
 
-        await userModel.findByIdAndUpdate(userID, { shoppingCart: updatedCart })
+        await userModel.findByIdAndUpdate(userID, { shoppingCart: updatedCart });
 
         res.status(200).json({ 
             message: 'Item removed from cart', 
             cart: updatedCart 
-        })
+        });
 
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        res.status(500).json({ message: error.message });
     }
 
-}
+};
 
 const updateCartItemQuantity = async (req, res) => {
 
     try {
-        const userID = req.params.userID
-        const { productId, size, quantity } = req.body
+        const userID = req.params.userID;
+        const { productId, size, quantity } = req.body;
 
         if (!productId || !size || !quantity) {
-            return res.status(400).json({ message: 'productId, size, and quantity are required' })
+            return res.status(400).json({ message: 'productId, size, and quantity are required' });
         }
 
         if (quantity < 1) {
-            return res.status(400).json({ message: 'quantity must be at least 1' })
+            return res.status(400).json({ message: 'quantity must be at least 1' });
         }
 
-        const user = await userModel.findById(userID)
+        const user = await userModel.findById(userID);
 
         if (!user) {
-            return res.status(404).json({ message: 'user not found' })
+            return res.status(404).json({ message: 'user not found' });
         }
 
         const itemIndex = user.shoppingCart.findIndex(item => 
             String(item.productId) === productId && item.size === size
-        )
+        );
 
         if (itemIndex === -1) {
-            return res.status(404).json({ message: 'Item not found in cart' })
+            return res.status(404).json({ message: 'Item not found in cart' });
         }
 
-        user.shoppingCart[itemIndex].quantity = quantity
+        user.shoppingCart[itemIndex].quantity = quantity;
 
-        await user.save()
+        await user.save();
 
         res.status(200).json({ 
             message: 'Quantity updated', 
             cart: user.shoppingCart 
-        })
+        });
 
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        res.status(500).json({ message: error.message });
     }
 
-}
+};
 
 const updateCartItemSize = async (req, res) => {
 
     try {
-        const userID = req.params.userID
-        const { productId, oldSize, newSize } = req.body
+        const userID = req.params.userID;
+        const { productId, oldSize, newSize } = req.body;
 
         if (!productId || !oldSize || !newSize) {
-            return res.status(400).json({ message: 'productId, oldSize, and newSize are required' })
+            return res.status(400).json({ message: 'productId, oldSize, and newSize are required' });
         }
 
-        const user = await userModel.findById(userID)
+        const user = await userModel.findById(userID);
 
         if (!user) {
-            return res.status(404).json({ message: 'user not found' })
+            return res.status(404).json({ message: 'user not found' });
         }
 
         const existingItem = user.shoppingCart.find(item => 
             String(item.productId) === productId && item.size === newSize
-        )
+        );
 
         if (existingItem) {
-            return res.status(400).json({ message: 'An item with this size already exists in cart' })
+            return res.status(400).json({ message: 'An item with this size already exists in cart' });
         }
 
         const itemIndex = user.shoppingCart.findIndex(item => 
             String(item.productId) === productId && item.size === oldSize
-        )
+        );
 
         if (itemIndex === -1) {
-            return res.status(404).json({ message: 'Item not found in cart' })
+            return res.status(404).json({ message: 'Item not found in cart' });
         }
 
-        user.shoppingCart[itemIndex].size = newSize
+        user.shoppingCart[itemIndex].size = newSize;
 
-        await user.save()
+        await user.save();
 
         res.status(200).json({ 
             message: 'Size updated', 
             cart: user.shoppingCart 
-        })
+        });
 
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        res.status(500).json({ message: error.message });
     }
 
-}
+};
 
-module.exports = { getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize }
+/**
+ * RGPD — Droit à l'oubli : supprime le compte et toutes les données de l'utilisateur.
+ */
+const deleteUserAccount = async (req, res) => {
+    try {
+        const userID = req.params.userID;
+        const deleted = await userModel.findByIdAndDelete(userID);
+        if (!deleted) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+        res.status(200).json({ message: 'Compte et données personnelles supprimés' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * RGPD — Droit d'accès : exporte toutes les données personnelles de l'utilisateur.
+ */
+const exportUserData = async (req, res) => {
+    try {
+        const userID = req.params.userID;
+        const user = await userModel.findById(userID)
+            .select('-password -__v')
+            .populate('orders')
+            .lean();
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+        res.status(200).json({ data: user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize, deleteUserAccount, exportUserData };
