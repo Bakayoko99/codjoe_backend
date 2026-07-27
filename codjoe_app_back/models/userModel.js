@@ -17,6 +17,9 @@ const userSchema = new mongoose.Schema({
     country: { type: String, required: true},
     birthday: { type: Date, required: true},
     role: { type: String, default: 'user' },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null },
+    consentDate: { type: Date, default: null },
     shoppingCart: { type: [shoppingCartSchema], required: false },
     orders: [{ type: mongoose.Types.ObjectId, ref: 'Order' }],
     createdAt: { type: Date, default: Date.now }

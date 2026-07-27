@@ -9,24 +9,24 @@ const getProducts = async (req, res) => {
     } catch (error) {
         res.json({ message: error.message });
     }
-}
+};
 
 const getProductById = async (req, res) => {
 
     try {
-        const productId = req.params.id
-        const product = await productModel.findById(productId)
+        const productId = req.params.id;
+        const product = await productModel.findById(productId);
 
         if (product === null) {
-            res.json({ message: 'product not found' })
+            return res.json({ message: 'product not found' });
         }
 
-        res.json(product)
+        res.json(product);
     } catch (error) {
-        res.json({ message: 'getProductById error' })
+        res.json({ message: 'getProductById error' });
     }
 
-}
+};
 
 const addProduct = async (req, res) => {
 
@@ -37,7 +37,7 @@ const addProduct = async (req, res) => {
     const mainImg = {
         data: req.files['mainImg'][0].buffer,
         contentType: req.files['mainImg'][0].mimetype
-    }
+    };
 
     const imgs = [];
 
@@ -70,19 +70,19 @@ const addProduct = async (req, res) => {
     } catch (error) {
         res.json({ message: error.message });
     }
-}
+};
 
 const deleteProduct = async (req, res) => {
     try {
         const product = await productModel.findById(req.params.id);
         const category = await categoryModel.findOne({ name: product.category });
-        category.products = category.products.filter(prod => prod != req.params.id);
+        category.products = category.products.filter(prod => prod !== req.params.id);
         await category.save();
         await productModel.findByIdAndDelete(req.params.id);
         res.json('Product deleted');
     } catch (error) {
         res.json({ message: error.message });
     }
-}
+};
 
 module.exports = { getProducts, addProduct, deleteProduct, getProductById };
