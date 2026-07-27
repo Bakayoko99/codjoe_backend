@@ -1,0 +1,93 @@
+# Pipeline d'intégration continue — CodJoe Backend
+# Déclenchement : à chaque push/PR sur main et develop
+
+name: CI Backend CodJoe
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    name: Qualité & Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      # 1. Récupération du code
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      # 2. Installation de pnpm
+      - name: Installation de pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 3. Configuration Node.js avec cache pnpm
+      - name: Configuration Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          cache-dependency-path: codjoe_app_back/pnpm-lock.yaml
+
+      # 4. Installation des dépendances
+      - name: Installation des dépendances
+        working-directory: codjoe_app_back
+        run: pnpm install --frozen-lockfile
+
+      # 5. Analyse statique ESLint (qualité + sécurité du code)
+      - name: Lint ESLint
+        working-directory: codjoe_app_back
+        run: pnpm lint
+
+      # 6. Exécution des tests avec Jest
+      - name: Tests unitaires et fonctionnels
+        working-directory: codjoe_app_back
+        run: pnpm test
+        env:
+          NODE_ENV: test
+
+      # 7. Audit de sécurité des dépendances
+      - name: Audit de sécurité (pnpm audit)
+        working-directory: codjoe_app_back
+        run: pnpm audit --audit-level=high
+        continue-on-error: true  # Ne bloque pas le pipeline sur les warnings
+
+  build-check:
+    name: Vérification démarrage serveur
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+          cache-dependency-path: codjoe_app_back/pnpm-lock.yaml
+
+      - name: Installation des dépendances
+        working-directory: codjoe_app_back
+        run: pnpm install --frozen-lockfile
+
+      - name: Vérification de la syntaxe du serveur
+        working-directory: codjoe_app_back
+        run: node --check server.js && node --check app.js
+        env:
+          NODE_ENV: test
+
+      - name: Génération de la documentation JSDoc (C24)
+        working-directory: codjoe_app_back
+        run: pnpm docs:generate
