@@ -1,7 +1,7 @@
 
 const config = {
     // 1: MongoDB Atlas 
-    MONGODB_ATLAS_URI: process.env.MONGODB_ATLAS_URI || "mongodb+srv://codjoe-sendu-hp-user:GVC4LxfZ6m511IUg@codjoe.amyjx.mongodb.net/codjoe?retryWrites=true&w=majority&appName=codjoe",
+    MONGODB_ATLAS_URI: process.env.MONGODB_ATLAS_URI,
     
     // 2: MongoDB local (fallback)
     MONGODB_LOCAL_URI: process.env.MONGODB_LOCAL_URI || "mongodb://localhost:27017/codjoe",
