@@ -56,7 +56,7 @@ const signUp = async (req, res) => {
             }
         };
 
-        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+        jwt.sign(payload, config.key, { expiresIn: 3600 }, (err, token) => {
             if (err) throw err;
             res.json({ token, emailVerificationToken: user.emailVerificationToken });
         });

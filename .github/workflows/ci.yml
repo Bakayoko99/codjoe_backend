@@ -53,6 +53,7 @@ jobs:
         run: pnpm test
         env:
           NODE_ENV: test
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       # 7. Audit de sécurité des dépendances
       - name: Audit de sécurité (pnpm audit)
