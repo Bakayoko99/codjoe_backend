@@ -28,7 +28,7 @@ const validUser = {
     firstName: 'Jean',
     lastName: 'Dupont',
     email: 'jean.dupont@test.com',
-    password: 'secret123',
+    password: 'Secr3t!Pass',
     country: 'France',
     birthday: '1990-01-15'
 };
@@ -55,10 +55,19 @@ describe('[UNITAIRES] POST /api/auth/signup — Validation des champs', () => {
         expect(res.body.errors[0].path).toBe('email');
     });
 
-    test('Doit retourner 400 si password trop court (< 6 caractères)', async () => {
+    test('Doit retourner 400 si password trop court (< 10 caractères)', async () => {
         const res = await request(app).post('/api/auth/signup').send({
             ...validUser,
-            password: '123'
+            password: 'Abc1!'
+        });
+        expect(res.statusCode).toBe(400);
+        expect(res.body.errors[0].path).toBe('password');
+    });
+
+    test('Doit retourner 400 si password ne respecte pas la politique de complexité (sans caractère spécial)', async () => {
+        const res = await request(app).post('/api/auth/signup').send({
+            ...validUser,
+            password: 'Abcdefgh12'
         });
         expect(res.statusCode).toBe(400);
         expect(res.body.errors[0].path).toBe('password');
@@ -110,7 +119,7 @@ describe('[FONCTIONNELS] POST /api/auth/signup', () => {
         // Tenter de recréer avec le même email
         const res = await request(app).post('/api/auth/signup').send(validUser);
         expect(res.statusCode).toBe(400);
-        expect(res.body.msg).toBe('User already exists');
+        expect(res.body.msg).toBe('Un compte existe déjà avec cette adresse email.');
     });
 
     test('Le mot de passe doit être hashé (non stocké en clair)', async () => {
@@ -145,16 +154,16 @@ describe('[FONCTIONNELS] POST /api/auth/login', () => {
             password: 'mauvais_mdp'
         });
         expect(res.statusCode).toBe(400);
-        expect(res.body.msg).toBe('Invalid credentials');
+        expect(res.body.msg).toBe('Email ou mot de passe incorrect.');
     });
 
     test('Doit retourner 400 si l\'utilisateur n\'existe pas', async () => {
         const res = await request(app).post('/api/auth/login').send({
             email: 'inexistant@test.com',
-            password: 'secret123'
+            password: 'Secr3t!Pass'
         });
         expect(res.statusCode).toBe(400);
-        expect(res.body.msg).toBe('Invalid credentials');
+        expect(res.body.msg).toBe('Email ou mot de passe incorrect.');
     });
 
 });

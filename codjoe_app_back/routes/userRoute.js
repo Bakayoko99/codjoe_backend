@@ -3,7 +3,13 @@ const express = require('express');
 
 const router = express.Router();
 
-const { getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize, deleteUserAccount, exportUserData } = require('../controllers/userController');
+const {
+    getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize,
+    deleteUserAccount, exportUserData,
+    getUserProfile, updateUserProfile, getAllUsers, updateUserRole
+} = require('../controllers/userController');
+const { verifyToken, requireAdmin, requireSelfOrAdmin } = require('../middlewares/verifyToken');
+const { updateProfileValidator } = require('../middlewares/authValidator');
 
 
 /**
@@ -30,7 +36,97 @@ const { getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuanti
  *       400:
  *         description: Utilisateur introuvable ou panier vide
  */
-router.get('/:userID/cart', getUserCartItems);
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: "Back-office — Lister tous les utilisateurs (admin uniquement)"
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des utilisateurs
+ *       403:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/', verifyToken, requireAdmin, getAllUsers);
+
+/**
+ * @swagger
+ * /api/users/{userID}:
+ *   get:
+ *     summary: "RGPD — Droit d'accès : consulter son profil"
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userID
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Profil utilisateur
+ *       403:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Utilisateur introuvable
+ *   put:
+ *     summary: "RGPD — Droit de rectification : mettre à jour son profil"
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userID
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour
+ *       400:
+ *         description: Validation échouée ou email déjà utilisé
+ *       403:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Utilisateur introuvable
+ */
+router.get('/:userID', verifyToken, requireSelfOrAdmin('userID'), getUserProfile);
+router.put('/:userID', verifyToken, requireSelfOrAdmin('userID'), updateProfileValidator, updateUserProfile);
+
+/**
+ * @swagger
+ * /api/users/{userID}/role:
+ *   patch:
+ *     summary: "Back-office — Modifier le rôle d'un utilisateur (admin uniquement)"
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userID
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role: { type: string, enum: [user, admin] }
+ *     responses:
+ *       200:
+ *         description: Rôle mis à jour
+ *       400:
+ *         description: Rôle invalide
+ *       403:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.patch('/:userID/role', verifyToken, requireAdmin, updateUserRole);
+
+router.get('/:userID/cart', verifyToken, requireSelfOrAdmin('userID'), getUserCartItems);
 
 /**
  * @swagger
@@ -62,7 +158,7 @@ router.get('/:userID/cart', getUserCartItems);
  *       200:
  *         description: Panier mis à jour
  */
-router.post('/:userID/cart/add', addNewCartItems);
+router.post('/:userID/cart/add', verifyToken, requireSelfOrAdmin('userID'), addNewCartItems);
 
 /**
  * @swagger
@@ -90,7 +186,7 @@ router.post('/:userID/cart/add', addNewCartItems);
  *       404:
  *         description: Utilisateur ou article introuvable
  */
-router.post('/:userID/cart/remove', removeCartItems);
+router.post('/:userID/cart/remove', verifyToken, requireSelfOrAdmin('userID'), removeCartItems);
 
 /**
  * @swagger
@@ -119,7 +215,7 @@ router.post('/:userID/cart/remove', removeCartItems);
  *       404:
  *         description: Article introuvable dans le panier
  */
-router.post('/:userID/cart/update-quantity', updateCartItemQuantity);
+router.post('/:userID/cart/update-quantity', verifyToken, requireSelfOrAdmin('userID'), updateCartItemQuantity);
 
 /**
  * @swagger
@@ -150,7 +246,7 @@ router.post('/:userID/cart/update-quantity', updateCartItemQuantity);
  *       404:
  *         description: Article introuvable
  */
-router.post('/:userID/cart/update-size', updateCartItemSize);
+router.post('/:userID/cart/update-size', verifyToken, requireSelfOrAdmin('userID'), updateCartItemSize);
 
 /**
  * @swagger
@@ -171,7 +267,7 @@ router.post('/:userID/cart/update-size', updateCartItemSize);
  *       404:
  *         description: Utilisateur introuvable
  */
-router.delete('/:userID', deleteUserAccount);
+router.delete('/:userID', verifyToken, requireSelfOrAdmin('userID'), deleteUserAccount);
 
 /**
  * @swagger
@@ -192,6 +288,6 @@ router.delete('/:userID', deleteUserAccount);
  *       404:
  *         description: Utilisateur introuvable
  */
-router.get('/:userID/data', exportUserData);
+router.get('/:userID/data', verifyToken, requireSelfOrAdmin('userID'), exportUserData);
 
 module.exports = router;

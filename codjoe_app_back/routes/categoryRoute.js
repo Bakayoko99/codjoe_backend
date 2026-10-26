@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const { getCategories, addCategory, getCategoriesProducts } = require('../controllers/categoryController');
+const { verifyToken, requireAdmin } = require('../middlewares/verifyToken');
 
 /**
  * @swagger
@@ -71,7 +72,7 @@ router.get('/', getCategories);
  *       404:
  *         description: Catégorie ou produits introuvables
  */
-router.post('/:name', addCategory);
+router.post('/:name', verifyToken, requireAdmin, addCategory);
 
 router.get('/:name', getCategoriesProducts);
 
