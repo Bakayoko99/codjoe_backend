@@ -82,15 +82,33 @@ const getOrderById = async (req, res) => {
         const { orderID } = req.params;
 
         const order = await orderModel.findById(orderID).lean();
-        
+
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
+        }
+
+        const isOwner = String(order.userId) === String(req.user.id);
+        if (!isOwner && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Vous n'êtes pas autorisé à accéder à cette commande." });
         }
 
         res.status(200).json({ data: order });
 
     } catch (error) {
         console.error('Error fetching order:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Back-office — Liste toutes les commandes, tous clients confondus (admin uniquement).
+ */
+const getAllOrders = async (req, res) => {
+    try {
+        const orders = await orderModel.find().sort({ createdAt: -1 }).lean();
+        res.status(200).json({ data: orders, count: orders.length });
+    } catch (error) {
+        console.error('Error fetching all orders:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -137,6 +155,11 @@ const cancelOrder = async (req, res) => {
             return res.status(404).json({ message: 'Order not found' });
         }
 
+        const isOwner = String(order.userId) === String(req.user.id);
+        if (!isOwner && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Vous n'êtes pas autorisé à annuler cette commande." });
+        }
+
         if (order.status === 'shipped' || order.status === 'delivered') {
             return res.status(400).json({ 
                 message: 'Cannot cancel order that has been shipped or delivered' 
@@ -158,10 +181,11 @@ const cancelOrder = async (req, res) => {
     }
 };
 
-module.exports = { 
-    createOrder, 
-    getUserOrders, 
-    getOrderById, 
-    updateOrderStatus, 
-    cancelOrder 
+module.exports = {
+    createOrder,
+    getUserOrders,
+    getOrderById,
+    getAllOrders,
+    updateOrderStatus,
+    cancelOrder
 };

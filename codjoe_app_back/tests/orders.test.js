@@ -32,7 +32,7 @@ afterAll(async () => {
 const createTestUser = async () => {
     const bcrypt = require('bcryptjs');
     const salt = await bcrypt.genSalt(10);
-    const hashed = await bcrypt.hash('secret123', salt);
+    const hashed = await bcrypt.hash('Secr3t!Pass', salt);
     return await userModel.create({
         firstName: 'Test',
         lastName: 'User',
@@ -40,6 +40,21 @@ const createTestUser = async () => {
         password: hashed,
         country: 'France',
         birthday: new Date('1990-01-01')
+    });
+};
+
+const createAdminUser = async () => {
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash('Secr3t!Pass', salt);
+    return await userModel.create({
+        firstName: 'Admin',
+        lastName: 'CODJOE',
+        email: 'admin@codjoe.com',
+        password: hashed,
+        country: 'France',
+        birthday: new Date('1985-01-01'),
+        role: 'admin'
     });
 };
 
@@ -161,7 +176,29 @@ describe('[FONCTIONNELS] GET /api/users/:userID/orders', () => {
 
 describe('[FONCTIONNELS] PUT /api/orders/:orderID/status', () => {
 
-    test('Doit mettre à jour le statut de la commande', async () => {
+    test('Doit mettre à jour le statut de la commande (admin uniquement)', async () => {
+        const user = await createTestUser();
+        const token = getToken(user);
+        const admin = await createAdminUser();
+        const adminToken = getToken(admin);
+
+        const createRes = await request(app)
+            .post(`/api/users/${user._id}/orders/create`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ items: validOrderItems, subtotal: 59.98, total: 65.97 });
+
+        const orderId = createRes.body.order._id;
+
+        const res = await request(app)
+            .put(`/api/orders/${orderId}/status`)
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({ status: 'shipped' });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.order.status).toBe('shipped');
+    });
+
+    test('Doit retourner 403 si un utilisateur non-admin tente de mettre à jour le statut', async () => {
         const user = await createTestUser();
         const token = getToken(user);
 
@@ -177,13 +214,14 @@ describe('[FONCTIONNELS] PUT /api/orders/:orderID/status', () => {
             .set('Authorization', `Bearer ${token}`)
             .send({ status: 'shipped' });
 
-        expect(res.statusCode).toBe(200);
-        expect(res.body.order.status).toBe('shipped');
+        expect(res.statusCode).toBe(403);
     });
 
     test('Doit retourner 400 avec un statut invalide', async () => {
         const user = await createTestUser();
         const token = getToken(user);
+        const admin = await createAdminUser();
+        const adminToken = getToken(admin);
 
         const createRes = await request(app)
             .post(`/api/users/${user._id}/orders/create`)
@@ -194,7 +232,7 @@ describe('[FONCTIONNELS] PUT /api/orders/:orderID/status', () => {
 
         const res = await request(app)
             .put(`/api/orders/${orderId}/status`)
-            .set('Authorization', `Bearer ${token}`)
+            .set('Authorization', `Bearer ${adminToken}`)
             .send({ status: 'invalide' });
 
         expect(res.statusCode).toBe(400);
@@ -230,6 +268,8 @@ describe('[FONCTIONNELS] PUT /api/orders/:orderID/cancel', () => {
     test('Ne doit pas annuler une commande expédiée', async () => {
         const user = await createTestUser();
         const token = getToken(user);
+        const admin = await createAdminUser();
+        const adminToken = getToken(admin);
 
         const createRes = await request(app)
             .post(`/api/users/${user._id}/orders/create`)
@@ -238,10 +278,10 @@ describe('[FONCTIONNELS] PUT /api/orders/:orderID/cancel', () => {
 
         const orderId = createRes.body.order._id;
 
-        // Mettre à jour le statut à shipped
+        // Mettre à jour le statut à shipped (action admin)
         await request(app)
             .put(`/api/orders/${orderId}/status`)
-            .set('Authorization', `Bearer ${token}`)
+            .set('Authorization', `Bearer ${adminToken}`)
             .send({ status: 'shipped' });
 
         // Tenter d'annuler

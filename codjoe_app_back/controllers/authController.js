@@ -28,10 +28,10 @@ const signUp = async (req, res) => {
     const { firstName, lastName, email, password, country, birthday } = req.body;
 
     try {
-        let user = await userModel.findOne({ email });
+        let user = await userModel.findOne({ email: email.toLowerCase() });
 
         if (user) {
-            return res.status(400).json({ msg: 'User already exists' });
+            return res.status(400).json({ msg: 'Un compte existe déjà avec cette adresse email.' });
         }
 
         user = new userModel({
@@ -63,7 +63,7 @@ const signUp = async (req, res) => {
 
     } catch (error) {
         console.error(error.message);
-        res.status(500).send('Server signup error');
+        res.status(500).json({ message: "Erreur serveur lors de l'inscription." });
     }
 };
 
@@ -83,16 +83,16 @@ const logIn = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await userModel.findOne({ email });
+        const user = await userModel.findOne({ email: email.toLowerCase() });
 
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+            return res.status(400).json({ msg: 'Email ou mot de passe incorrect.' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid credentials' });
+            return res.status(400).json({ msg: 'Email ou mot de passe incorrect.' });
         }
 
         const payload = {
@@ -109,7 +109,7 @@ const logIn = async (req, res) => {
 
     } catch (error) {
         console.error(error.message);
-        res.status(500).send('Server login error');
+        res.status(500).json({ message: 'Erreur serveur lors de la connexion.' });
     }
 };
 

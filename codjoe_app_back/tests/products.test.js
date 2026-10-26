@@ -6,10 +6,29 @@
 
 const request = require('supertest');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const app = require('../app');
 const dbHandler = require('./helpers/dbHandler');
 const productModel = require('../models/productModel');
 const categoryModel = require('../models/categoryModel');
+const userModel = require('../models/userModel');
+const config = require('../config');
+
+const getAdminToken = async () => {
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash('Secr3t!Pass', salt);
+    const admin = await userModel.create({
+        firstName: 'Admin',
+        lastName: 'CODJOE',
+        email: 'admin-products@codjoe.com',
+        password: hashed,
+        country: 'France',
+        birthday: new Date('1985-01-01'),
+        role: 'admin'
+    });
+    return jwt.sign({ user: { id: admin._id, role: admin.role } }, config.key, { expiresIn: 3600 });
+};
 
 // ----- Setup / Teardown -----
 
@@ -112,9 +131,18 @@ describe('[FONCTIONNELS] GET /api/products/:id', () => {
 
 describe('[FONCTIONNELS] DELETE /api/products/delete/:id', () => {
 
-    test('Doit supprimer un produit existant', async () => {
+    test('Doit retourner 403 sans token admin', async () => {
         const product = await seedProduct();
         const res = await request(app).delete(`/api/products/delete/${product._id}`);
+        expect(res.statusCode).toBe(403);
+    });
+
+    test('Doit supprimer un produit existant (admin)', async () => {
+        const product = await seedProduct();
+        const adminToken = await getAdminToken();
+        const res = await request(app)
+            .delete(`/api/products/delete/${product._id}`)
+            .set('Authorization', `Bearer ${adminToken}`);
         expect(res.statusCode).toBe(200);
         expect(res.body).toBe('Product deleted');
 
@@ -122,9 +150,12 @@ describe('[FONCTIONNELS] DELETE /api/products/delete/:id', () => {
         expect(deleted).toBeNull();
     });
 
-    test('La catégorie doit être mise à jour après suppression', async () => {
+    test('La catégorie doit être mise à jour après suppression (admin)', async () => {
         const product = await seedProduct();
-        await request(app).delete(`/api/products/delete/${product._id}`);
+        const adminToken = await getAdminToken();
+        await request(app)
+            .delete(`/api/products/delete/${product._id}`)
+            .set('Authorization', `Bearer ${adminToken}`);
         const category = await categoryModel.findOne({ name: 'test' });
         expect(category.products).not.toContain(product._id);
     });

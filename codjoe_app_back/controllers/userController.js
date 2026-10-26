@@ -1,5 +1,108 @@
 
+const crypto = require('crypto');
+const { validationResult } = require('express-validator');
 const userModel = require('../models/userModel');
+
+/**
+ * RGPD — Droit d'accès / de rectification : consulter son profil.
+ */
+const getUserProfile = async (req, res) => {
+    try {
+        const userID = req.params.userID;
+        const user = await userModel.findById(userID).select('-password -__v -emailVerificationToken');
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+        res.status(200).json({ data: user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * RGPD — Droit de rectification : mettre à jour les informations de son profil.
+ * Si l'email change, il doit être revérifié (double opt-in).
+ */
+const updateUserProfile = async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const userID = req.params.userID;
+        const { firstName, lastName, address, country, birthday, email } = req.body;
+
+        const user = await userModel.findById(userID);
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        if (email !== undefined && email.toLowerCase() !== user.email) {
+            const existing = await userModel.findOne({ email: email.toLowerCase() });
+            if (existing) {
+                return res.status(400).json({ message: 'Cette adresse email est déjà utilisée par un autre compte.' });
+            }
+            user.email = email.toLowerCase();
+            user.emailVerified = false;
+            user.emailVerificationToken = crypto.randomBytes(32).toString('hex');
+        }
+
+        if (firstName !== undefined) user.firstName = firstName;
+        if (lastName !== undefined) user.lastName = lastName;
+        if (address !== undefined) user.address = address;
+        if (country !== undefined) user.country = country;
+        if (birthday !== undefined) user.birthday = birthday;
+
+        await user.save();
+
+        const safeUser = user.toObject();
+        delete safeUser.password;
+        delete safeUser.emailVerificationToken;
+        delete safeUser.__v;
+
+        res.status(200).json({ message: 'Profil mis à jour avec succès', data: safeUser });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Back-office — Liste tous les utilisateurs (admin uniquement).
+ */
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await userModel.find().select('-password -__v -emailVerificationToken').sort({ createdAt: -1 });
+        res.status(200).json({ data: users, count: users.length });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Back-office — Modifie le rôle d'un utilisateur (admin uniquement).
+ */
+const updateUserRole = async (req, res) => {
+    try {
+        const userID = req.params.userID;
+        const { role } = req.body;
+
+        if (!['user', 'admin'].includes(role)) {
+            return res.status(400).json({ message: "Le rôle doit être 'user' ou 'admin'." });
+        }
+
+        const user = await userModel.findByIdAndUpdate(userID, { role }, { new: true })
+            .select('-password -__v -emailVerificationToken');
+
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur introuvable' });
+        }
+
+        res.status(200).json({ message: 'Rôle mis à jour avec succès', data: user });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
 const getUserCartItems = async (req, res) => {
 
@@ -268,4 +371,8 @@ const exportUserData = async (req, res) => {
     }
 };
 
-module.exports = { getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize, deleteUserAccount, exportUserData };
+module.exports = {
+    getUserCartItems, addNewCartItems, removeCartItems, updateCartItemQuantity, updateCartItemSize,
+    deleteUserAccount, exportUserData,
+    getUserProfile, updateUserProfile, getAllUsers, updateUserRole
+};
