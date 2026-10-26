@@ -8,6 +8,7 @@ const upload = multer();
 const cpUpload = upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'imgs', maxCount: 8 }]);
 
 const { getProducts, getProductById, addProduct, deleteProduct } = require('../controllers/productController');
+const { verifyToken, requireAdmin } = require('../middlewares/verifyToken');
 
 /**
  * @swagger
@@ -91,7 +92,7 @@ router.get('/:id', getProductById);
  *       400:
  *         description: Aucune image fournie
  */
-router.post('/add', cpUpload, addProduct);
+router.post('/add', verifyToken, requireAdmin, cpUpload, addProduct);
 
 /**
  * @swagger
@@ -115,6 +116,6 @@ router.post('/add', cpUpload, addProduct);
  *               type: string
  *               example: 'Product deleted'
  */
-router.delete('/delete/:id', deleteProduct);
+router.delete('/delete/:id', verifyToken, requireAdmin, deleteProduct);
 
 module.exports = router;

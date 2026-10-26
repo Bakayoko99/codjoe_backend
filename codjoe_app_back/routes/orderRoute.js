@@ -1,8 +1,24 @@
 const express = require('express');
-const { createOrder, getUserOrders, getOrderById, updateOrderStatus, cancelOrder } = require('../controllers/orderController');
-const { verifyToken } = require('../middlewares/verifyToken');
+const { createOrder, getUserOrders, getOrderById, getAllOrders, updateOrderStatus, cancelOrder } = require('../controllers/orderController');
+const { verifyToken, requireAdmin, requireSelfOrAdmin } = require('../middlewares/verifyToken');
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/orders:
+ *   get:
+ *     summary: "Back-office — Lister toutes les commandes (admin uniquement)"
+ *     tags: [Commandes]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste de toutes les commandes
+ *       403:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/orders', verifyToken, requireAdmin, getAllOrders);
 
 /**
  * @swagger
@@ -44,7 +60,7 @@ const router = express.Router();
  *       404:
  *         description: Utilisateur introuvable
  */
-router.post('/users/:userID/orders/create', verifyToken, createOrder);
+router.post('/users/:userID/orders/create', verifyToken, requireSelfOrAdmin('userID'), createOrder);
 
 /**
  * @swagger
@@ -72,7 +88,7 @@ router.post('/users/:userID/orders/create', verifyToken, createOrder);
  *       403:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.get('/users/:userID/orders', verifyToken, getUserOrders);
+router.get('/users/:userID/orders', verifyToken, requireSelfOrAdmin('userID'), getUserOrders);
 
 /**
  * @swagger
@@ -132,7 +148,7 @@ router.get('/orders/:orderID', verifyToken, getOrderById);
  *       403:
  *         $ref: '#/components/responses/Unauthorized'
  */
-router.put('/orders/:orderID/status', verifyToken, updateOrderStatus);
+router.put('/orders/:orderID/status', verifyToken, requireAdmin, updateOrderStatus);
 
 /**
  * @swagger
