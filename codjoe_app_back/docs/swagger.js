@@ -37,6 +37,10 @@ sauf les uploads de fichiers (\`multipart/form-data\`).
         },
         servers: [
             {
+                url: 'https://codjoe-backend.onrender.com',
+                description: 'Serveur de production (Render)'
+            },
+            {
                 url: 'http://localhost:8085',
                 description: 'Serveur de développement local'
             }
